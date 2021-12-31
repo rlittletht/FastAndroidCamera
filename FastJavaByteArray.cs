@@ -57,6 +57,32 @@ namespace ApxLabs.FastAndroidCamera
 			}
 		}
 
+        private void Init(IntPtr handle, bool readOnly, Guid correlationId)
+        {
+            if (handle == IntPtr.Zero)
+                throw new ArgumentNullException("handle");
+
+            IsReadOnly = readOnly;
+
+            // Retain a global reference to the byte array.
+            _javaRef = new JniObjectReference(handle).NewGlobalRef();
+            Count = JniEnvironment.Arrays.GetArrayLength(_javaRef);
+
+            bool isCopy = false;
+            unsafe
+            {
+                // Get a pinned pointer to the byte array using the global Handle
+                Raw = (byte*)JniEnvironment.Arrays.GetByteArrayElements(_javaRef, &isCopy);
+            }
+
+            Android.Util.Log.Debug("FastJavaByteArray", $"{correlationId}: ctor: handle-in(0x{(long)handle:x16}), fastarray({this})");
+		}
+
+        public FastJavaByteArray(IntPtr handle, Guid correlationId)
+        {
+            Init(handle, true, correlationId);
+        }
+
 		/// <summary>
 		/// Creates a FastJavaByteArray wrapper around an existing Java/JNI byte array
 		/// </summary>
@@ -64,21 +90,7 @@ namespace ApxLabs.FastAndroidCamera
 		/// <param name="readOnly">Whether to consider this byte array read-only</param>
 		public FastJavaByteArray(IntPtr handle, bool readOnly = true)
 		{
-			if (handle == IntPtr.Zero)
-				throw new ArgumentNullException("handle");
-
-			IsReadOnly = readOnly;
-
-			// Retain a global reference to the byte array.
-			_javaRef = new JniObjectReference(handle).NewGlobalRef();
-			Count = JniEnvironment.Arrays.GetArrayLength(_javaRef);
-
-			bool isCopy = false;
-			unsafe
-			{
-				// Get a pinned pointer to the byte array using the global Handle
-				Raw = (byte*)JniEnvironment.Arrays.GetByteArrayElements(_javaRef, &isCopy);
-			}
+			Init(handle, readOnly, Guid.Empty);
 		}
 
 		#endregion
@@ -300,7 +312,10 @@ namespace ApxLabs.FastAndroidCamera
 
 		#region Public Properties
 
-		/// <summary>
+        public override unsafe string ToString() =>
+            $"Raw(0x{(Int64)this.Raw:x16}), Handle(0x{this.Handle:x16})";
+        
+        /// <summary>
 		/// Gets the raw pointer to the underlying data.
 		/// </summary>
 		public unsafe byte* Raw { get; private set; }

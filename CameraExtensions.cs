@@ -27,8 +27,19 @@ namespace ApxLabs.FastAndroidCamera
 	/// instances as parameters instead of raw <see cref="IntPtr"/> values.
 	/// </summary>
 	public static class CameraExtensions
-	{
+    {
+        public static string TAG = "ApxLabs.FastAndroidCamera";
+
 		static IntPtr id_addCallbackBuffer_arrayB;
+
+        public static void AddCallbackBufferCorrelated(this Camera self, FastJavaByteArray callbackBuffer,
+            Guid correlationId)
+        {
+            Android.Util.Log.Debug(CameraExtensions.TAG, $"{correlationId}: AddCallbackBuffer: {callbackBuffer}");
+
+            AddCallbackBuffer(self, callbackBuffer);
+        }
+
 		/// <summary>
 		/// Adds a pre-allocated buffer to the preview callback buffer queue. Applications can add one or more buffers
 		/// to the queue. When a preview frame arrives and there is still at least one available buffer, the buffer will
@@ -42,6 +53,9 @@ namespace ApxLabs.FastAndroidCamera
 		{
 			if (id_addCallbackBuffer_arrayB == IntPtr.Zero)
 				id_addCallbackBuffer_arrayB = JNIEnv.GetMethodID(self.Class.Handle, "addCallbackBuffer", "([B)V");
+
+            Android.Util.Log.Debug(CameraExtensions.TAG, $"AddCallbackBuffer: {callbackBuffer}");
+
 			JNIEnv.CallVoidMethod(self.Handle, id_addCallbackBuffer_arrayB, new JValue(callbackBuffer.Handle));
 		}
 
@@ -110,7 +124,7 @@ namespace ApxLabs.FastAndroidCamera
 		/// <param name="camera">The Camera service object.</param>
 		// Metadata.xml XPath method reference: path="/api/package[@name='android.hardware']/interface[@name='Camera.PreviewCallback']/method[@name='onPreviewFrame' and count(parameter)=2 and parameter[1][@type='byte[]'] and parameter[2][@type='android.hardware.Camera']]"
 		[Register("onPreviewFrame", "([BLandroid/hardware/Camera;)V", "GetOnPreviewFrame_arrayBLandroid_hardware_Camera_Handler:ApxLabs.FastAndroidCamera.INonMarshalingPreviewCallbackInvoker, FastAndroidCamera, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null")]
-		void OnPreviewFrame(IntPtr data, Camera camera);
+		void OnPreviewFrame(IntPtr data, Camera camera, Guid correlationId);
 	}
 
 	[Register("android/hardware/Camera$PreviewCallback", DoNotGenerateAcw = true)]
@@ -170,17 +184,23 @@ namespace ApxLabs.FastAndroidCamera
 
 		static void n_OnPreviewFrame_arrayBLandroid_hardware_Camera_(IntPtr jnienv, IntPtr native__this, IntPtr native_data, IntPtr native_camera)
 		{
+            Guid correlationId = Guid.NewGuid();
+
 			INonMarshalingPreviewCallback __this = GetObject<INonMarshalingPreviewCallback>(native__this, JniHandleOwnership.DoNotTransfer);
 			Camera camera = GetObject<Camera>(native_camera, JniHandleOwnership.DoNotTransfer);
-			__this.OnPreviewFrame(native_data, camera);
+            Android.Util.Log.Debug(CameraExtensions.TAG, $"{correlationId}: OnPreviewFrame(1): data(0x{(long)native_data:x16})");
+			__this.OnPreviewFrame(native_data, camera, correlationId);
 		}
 		#pragma warning restore 0169
 
 		IntPtr id_onPreviewFrame_arrayBLandroid_hardware_Camera_;
-		public void OnPreviewFrame(IntPtr data, Camera camera)
-		{
+		public void OnPreviewFrame(IntPtr data, Camera camera, Guid correlationId)
+        {
 			if (id_onPreviewFrame_arrayBLandroid_hardware_Camera_ == IntPtr.Zero)
 				id_onPreviewFrame_arrayBLandroid_hardware_Camera_ = JNIEnv.GetMethodID(class_ref, "onPreviewFrame", "([BLandroid/hardware/Camera;)V");
+
+            Android.Util.Log.Debug(CameraExtensions.TAG, $"{correlationId}: OnPreviewFrame(2): data(0x{(long)data:x16})");
+
 			JNIEnv.CallVoidMethod(Handle, id_onPreviewFrame_arrayBLandroid_hardware_Camera_, new JValue(data), new JValue(camera));
 		}
 	}
